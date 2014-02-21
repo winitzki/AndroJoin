@@ -45,14 +45,14 @@ public class AJoinTests {
 		getValue = new M_empty_int("getValue");
 
 		define(
-				reaction(inputs(counter, inc), new ReactionBody() {
+				reaction(consume(counter, inc), new ReactionBody() {
 					
 					public void run(int n) {
 						counter.put(n+1);
 					}
 				}), 
 			
-				reaction(inputs(counter, getValue), new ReactionBody() {
+				reaction(consume(counter, getValue), new ReactionBody() {
 					public void run(int n) {
 						to(getValue.reply(n));
 						counter.put(n);

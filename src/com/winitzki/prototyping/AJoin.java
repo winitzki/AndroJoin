@@ -171,8 +171,7 @@ public class AJoin {
 	 *
 	 */
 	
-	public static M_A[] inputs(M_A... m_As) {
-//		m_As[0].ownedBy = null;
+	public static M_A[] consume(M_A... m_As) {
 		return m_As;	
 	}
 
