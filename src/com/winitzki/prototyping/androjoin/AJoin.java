@@ -1,4 +1,4 @@
-package com.winitzki.prototyping;
+package com.winitzki.prototyping.androjoin;
 
 import java.util.UUID;
 import java.util.concurrent.Semaphore;

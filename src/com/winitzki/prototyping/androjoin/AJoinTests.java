@@ -1,25 +1,16 @@
 /**
  * 
  */
-package com.winitzki.prototyping;
+package com.winitzki.prototyping.androjoin;
 
-import static org.junit.Assert.*;
+import junit.framework.TestCase;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import com.winitzki.prototyping.AJoin.M_empty;
-import com.winitzki.prototyping.AJoin.M_empty_int;
-import com.winitzki.prototyping.AJoin.M_int;
-
-import static com.winitzki.prototyping.AJoin.*;
-
+import static com.winitzki.prototyping.androjoin.AJoin.*;
 /**
  * @author user
  *
  */
-public class AJoinTests {
+public class AJoinTests extends TestCase {
 
 	M_int counter;
 	M_empty inc;
@@ -27,18 +18,18 @@ public class AJoinTests {
 	/**
 	 * @throws java.lang.Exception
 	 */
-	@Before
+	
 	public void setUp() throws Exception {
 	}
 
 	/**
 	 * @throws java.lang.Exception
 	 */
-	@After
+	
 	public void tearDown() throws Exception {
 	}
 
-	@Test
+	
 	public void test1() {
 		counter = new M_int("counter");
 		inc = new M_empty("inc");
