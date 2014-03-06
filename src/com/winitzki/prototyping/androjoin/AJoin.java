@@ -382,11 +382,49 @@ public class AJoin {
 		return null;
 	}
 
+	/*NSMutableArray *affectedMoleculeList = [NSMutableArray arrayWithCapacity:moleculeNames.count];
+    for (NSString *moleculeClass in moleculeNames) {
+        NSMutableArray *presentMolecules = [self.availableMoleculeNames objectForKey:moleculeClass];
+        if ([presentMolecules count] > 0) {
+            [presentMolecules shuffle];  // important to remove a randomly chosen object! so, first we shuffle,
+            id chosenMolecule = [presentMolecules lastObject]; // then we select the last object.
+            
+            [molecules addObject:chosenMolecule];
+            [affectedMoleculeList addObject:presentMolecules]; // affectedMoleculeList is the list of arrays from which we have selected last elements. Each of these arrays needs to be trimmed (the last element removed), but only if we finally succeed in finding all required molecules. Otherwise, nothing should be removed from any lists.
+        } else {
+            // did not find this molecule, but reaction requires it - nothing to do now.
+            return nil;
+        }
+    }
+    if (moleculeNames.count != molecules.count) return nil;
+    // if we are here, we have found all input molecules required for the reaction!
+    // now we need to remove them from the molecule arrays; note that affectedMoleculeInstances is a pointer to an array inside the dictionary self.availableMoleculeNames.
+    for (NSMutableArray *affectedMoleculeInstances in affectedMoleculeList) {
+        [affectedMoleculeInstances removeLastObject]; // now that the array was shuffled, we know that we need to remove the last object.
+    }
+    return [NSArray arrayWithArray:molecules];*/
 	private List<M_A> moleculesAvailable(M_A[] nominalInputMolecules) {
+		List<M_A> molecules = new ArrayList<AJoin.M_A>();
+		List<List<M_A>> affectedMoleculeList = new ArrayList<List<AJoin.M_A>>();
 		for (M_A m : nominalInputMolecules) {
+			List<M_A> presentMolecules = availableMolecules.get(m.getName());
+			if (presentMolecules != null && presentMolecules.size() > 0) {
+				Collections.shuffle(presentMolecules);
+				molecules.add(presentMolecules.get(0));
+				affectedMoleculeList.add(presentMolecules);
+			} else {
+				return null;
+			}
 			
 		}
-		return null;
+		if (molecules.size() != nominalInputMolecules.length) {
+			return null;
+			
+		}
+		for (List<M_A> l : affectedMoleculeList) {
+			l.remove(0);
+		}
+		return molecules;
 	}
 
 	/**
