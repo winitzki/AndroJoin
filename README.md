@@ -16,13 +16,13 @@ This project contains the join calculus library and an example Android applicati
 Version history
 ---------------
 
-* Version 0.0.1
-
-Initial commit. First ideas about the Java API are put into tests. Nothing works yet.
-
 * Version 0.1
 
 Almost completely implemented version of the `AndroJoin` library, closely following the iOS implementation (`CocoaJoin`).
 
 Test application ("dining philosophers") runs but gets deadlocked after a while, due to bugs in the threads implementation and/or limitations of `AsyncTask` on Android (a single-threaded executor is being used for all tasks, which probably breaks the semantics of join calculus). This needs to be fixed before `AndroJoin` can be considered at all usable.
+
+* Version 0.0.1
+
+Initial commit. First ideas about the Java API are put into tests. Nothing works yet.
 
