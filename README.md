@@ -16,6 +16,10 @@ This project contains the join calculus library and an example Android applicati
 Version history
 ---------------
 
+* Version 0.1.1
+
+Fixed problems with multithreading. This version is usable now. The semantics of purely functional join calculus is fully implemented.
+
 * Version 0.1
 
 Almost completely implemented version of the `AndroJoin` library, closely following the iOS implementation (`CocoaJoin`).
