@@ -32,8 +32,8 @@ public class AJoinTests extends TestCase {
 	
 	public void test1() {
 		counter = new M_int("counter");
-		inc = new M_empty("inc");
-		getValue = new M_empty_int("getValue");
+		inc = new M_empty("increment");
+		getValue = new M_empty_int("get value");
 
 		define(
 				reaction(consume(counter, inc), new ReactionBody() {
