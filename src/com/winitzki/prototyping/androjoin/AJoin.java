@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Semaphore;
@@ -16,6 +17,7 @@ import java.util.concurrent.Semaphore;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 
 public class AJoin {
@@ -31,7 +33,17 @@ public class AJoin {
 		joinID = ++globalJoinCount;
 		decideOnUIThread = uiThread;
 	}
-	
+	public static void randomWait(long minMillis, long maxMillis) {
+		long time = minMillis + (new Random().nextLong())%maxMillis;
+		Log.d("AJoin", "executing random delay of " + time + "ms");
+
+		try {
+			Thread.sleep(time);
+		} catch (InterruptedException e) {
+			
+			e.printStackTrace();
+		}
+	}
 	// name of asynchronous molecule
 	public static abstract class M_A {
 		protected String moleculeName;
@@ -53,11 +65,12 @@ public class AJoin {
 			value = null;
 		}
 		private M_A makeCopy(Object value) {
+			M_A newCopy = null;
 			try {
-				M_A newCopy = this.getClass().newInstance();
+				newCopy = this.getClass().newInstance();
 				newCopy.assign(this.moleculeName, this.ownerJoin);
-				newCopy.value = value;
-				return newCopy;
+				newCopy.setValue(value);
+				
 			} catch (InstantiationException e) {
 				
 				e.printStackTrace();
@@ -65,7 +78,11 @@ public class AJoin {
 				
 				e.printStackTrace();
 			}
-			return null;
+			return newCopy;
+		}
+		private void setValue(Object value2) {
+			this.value = value2;
+			
 		}
 		protected void assign(String name, AJoin join) {
 			moleculeName = name;
@@ -77,7 +94,8 @@ public class AJoin {
 		public String toString() {
 			String joinIdString = "";
 			if (ownerJoin != null) joinIdString = "[j=" + ownerJoin.joinID + "]";
-			return moleculeName + "(" + value.toString() + ")" + joinIdString;
+			
+			return moleculeName + "(" + value + ")" + joinIdString;
 		}
 	}
 	
@@ -181,10 +199,14 @@ public class AJoin {
 	}
 
 	
-	public abstract static class ReactionBody {
+	public static class ReactionBody {
 		private List<M_A> inputMolecules;
 		private boolean scheduleOnUIThread;
+		private ReactionBody givenBody;
 		
+		public String toString() {
+			return "{input: " + inputMolecules.toString() + ", ui=" + scheduleOnUIThread + "}";
+		}
 		private M_A findMoleculeById(M_A m) {
 			for (M_A inM : inputMolecules) {
 				if (inM.getName().equals(m.getName())) return m;
@@ -193,16 +215,10 @@ public class AJoin {
 		}
 		private ReactionBody makeCopy(boolean scheduleOnUIThread) {
 			ReactionBody newCopy = null;
-			try {
-				newCopy = this.getClass().newInstance();
-				newCopy.scheduleOnUIThread = scheduleOnUIThread;
-			} catch (InstantiationException e) {
-				
-				e.printStackTrace();
-			} catch (IllegalAccessException e) {
-				
-				e.printStackTrace();
-			}
+			newCopy = new ReactionBody();
+			newCopy.givenBody = this;
+			newCopy.scheduleOnUIThread = scheduleOnUIThread;
+			
 			return newCopy;
 		}
 		public static Method findMethod(Class<?> instanceClass, String name) {
@@ -214,8 +230,9 @@ public class AJoin {
 			return null;
 		}
 		private void runReactionBody() { // input molecules must be already assigned at this point!
-			final ReactionBody instance = this;
-			final Class<?> instanceClass = this.getClass();
+			final ReactionBody instance = this.givenBody;
+			instance.inputMolecules = this.inputMolecules;
+			final Class<?> instanceClass = this.givenBody.getClass();
 			runOnUIThread(scheduleOnUIThread, new Runnable() {
 				
 				@Override
@@ -240,7 +257,7 @@ public class AJoin {
 							}
 						}
 					}
-					if (paramNumber != paramClasses.length) {
+					if (paramNumber +1 != paramClasses.length) {
 						// error! too few parameters in the run() method of reaction body
 						paramError = true;
 					}
@@ -303,11 +320,17 @@ public class AJoin {
 		return knownMoleculeNames != null && knownMoleculeNames.contains(m.getName());
 	}
 	private void inject(M_A fullM) {
-		if (!isMoleculeKnown(fullM)) return;
+		if (!isMoleculeKnown(fullM)) {
+			Log.e("AJoin", "injecting unknown molecule " + fullM.getName() + ", now " + toString());
+			throw new IllegalArgumentException();
+		}
+		
 		injectAndStartReactions(fullM);		
 	}
 	private Object injectSyncAndReturnValue(M_S fullM) {
-		if (!isMoleculeKnown(fullM)) return null;
+		if (!isMoleculeKnown(fullM))  {
+			throw new IllegalArgumentException();
+		}
 		injectAndStartReactions(fullM);
 		try {
 			fullM.semaphore.acquire();
@@ -336,7 +359,7 @@ public class AJoin {
 					runnable.run();
 					return null;
 				}
-			};
+			}.execute();
 		}
 	}
 	private void injectAndStartReactions(final M_A fullM) {
@@ -344,25 +367,28 @@ public class AJoin {
 			
 			@Override
 			public void run() {
+//				Log.d("AJoin", "initial request to inject molecule " + fullM.getName());
 				internalInjectAndStartReactions(fullM);
 			}
 		});
 		
 	}
 	private void internalInjectAndStartReactions(M_A fullM) {
+//		Log.d("AJoin", "internalInjectAndStartReactions: " + fullM.getName());
 		List<M_A> presentMolecules = availableMolecules.get(fullM.getName());
 		if (presentMolecules == null) {
 			presentMolecules = new ArrayList<AJoin.M_A>();
 			availableMolecules.put(fullM.getName(), presentMolecules);
 		}
 		presentMolecules.add(fullM);
-		
+		Log.d("AJoin", "adding molecule " + fullM.getName() + ", now " + toString());
 		decideAndRunPossibleReactions();
 	}
 
 	private void decideAndRunPossibleReactions() {
 		ReactionBody foundReaction = null;
 		while( (foundReaction = findAnyReaction()) != null ) {
+			Log.d("AJoin", "about to run reaction " + foundReaction.toString());
 			foundReaction.runReactionBody();
 		}
 		
@@ -379,30 +405,15 @@ public class AJoin {
 				return newBody;
 			}
 		}
+		Log.d("AJoin", "found no reactions, now " + toString());
 		return null;
 	}
 
-	/*NSMutableArray *affectedMoleculeList = [NSMutableArray arrayWithCapacity:moleculeNames.count];
-    for (NSString *moleculeClass in moleculeNames) {
-        NSMutableArray *presentMolecules = [self.availableMoleculeNames objectForKey:moleculeClass];
-        if ([presentMolecules count] > 0) {
-            [presentMolecules shuffle];  // important to remove a randomly chosen object! so, first we shuffle,
-            id chosenMolecule = [presentMolecules lastObject]; // then we select the last object.
-            
-            [molecules addObject:chosenMolecule];
-            [affectedMoleculeList addObject:presentMolecules]; // affectedMoleculeList is the list of arrays from which we have selected last elements. Each of these arrays needs to be trimmed (the last element removed), but only if we finally succeed in finding all required molecules. Otherwise, nothing should be removed from any lists.
-        } else {
-            // did not find this molecule, but reaction requires it - nothing to do now.
-            return nil;
-        }
-    }
-    if (moleculeNames.count != molecules.count) return nil;
-    // if we are here, we have found all input molecules required for the reaction!
-    // now we need to remove them from the molecule arrays; note that affectedMoleculeInstances is a pointer to an array inside the dictionary self.availableMoleculeNames.
-    for (NSMutableArray *affectedMoleculeInstances in affectedMoleculeList) {
-        [affectedMoleculeInstances removeLastObject]; // now that the array was shuffled, we know that we need to remove the last object.
-    }
-    return [NSArray arrayWithArray:molecules];*/
+	public String toString() {
+		return String.format("{AJoin %d, soup=%s}", joinID, availableMolecules.toString());
+		
+	}
+	
 	private List<M_A> moleculesAvailable(M_A[] nominalInputMolecules) {
 		List<M_A> molecules = new ArrayList<AJoin.M_A>();
 		List<List<M_A>> affectedMoleculeList = new ArrayList<List<AJoin.M_A>>();
@@ -469,6 +480,6 @@ public class AJoin {
 				knownMoleculeNames.add(m.getName());
 			}
 		}
-		
+		Log.d("AJoin", "known molecules " + knownMoleculeNames.toString());
 	}
 }
