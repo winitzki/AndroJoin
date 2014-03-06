@@ -125,7 +125,7 @@ public class DiningPhilosophicalLogic {
 					public void run() {
 						state.put(Eating + 10*4);
 						randomDelay();
-						tE.put(); fEA.put(); fDE.put();
+						tE.put(); fDE.put(); fEA.put();
 						state.put(Thinking + 10*4);
 					}
 				}),

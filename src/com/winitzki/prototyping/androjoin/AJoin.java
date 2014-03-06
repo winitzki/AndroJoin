@@ -8,13 +8,16 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
-import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -28,16 +31,21 @@ public class AJoin {
 	private Set<String> knownMoleculeNames;
 	private boolean decideOnUIThread;
 	
+	// multithreading: all joins will be decided on one thread; all reactions will be executed on two threads
 	private static Handler uiHandler = new Handler(Looper.getMainLooper());
+	private static ThreadPoolExecutor executorForJoins = new ThreadPoolExecutor(1, 1, 1, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
+	private static ThreadPoolExecutor executorForReactions = new ThreadPoolExecutor(2, 2, 1, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
+	
 	public AJoin(boolean uiThread) {
 		joinID = ++globalJoinCount;
 		decideOnUIThread = uiThread;
 	}
 	public static void randomWait(long minMillis, long maxMillis) {
 		long randomTime = new Random().nextInt();
-		randomTime = randomTime - (long)Math.floor( randomTime / maxMillis ) * maxMillis; 
+		if (randomTime < 0) randomTime = -randomTime; // avoid negative values here!
+		randomTime = randomTime - (long)(Math.floor( randomTime / maxMillis )) * maxMillis; 
 		long time = minMillis + randomTime;
-		Log.d("AJoin", String.format("executing random delay of %d ms", (int)time) );
+		Log.d("AJoin", String.format("%d ms wait", (int)time) );
 
 		try {
 			Thread.sleep(time);
@@ -94,10 +102,11 @@ public class AJoin {
 			ownerJoin.inject(makeCopy(value));
 		}
 		public String toString() {
-			String joinIdString = "";
-			if (ownerJoin != null) joinIdString = "[j=" + ownerJoin.joinID + "]";
-			
-			return moleculeName + "(" + value + ")" + joinIdString;
+//			String joinIdString = "";
+//			if (ownerJoin != null) joinIdString = "[j=" + ownerJoin.joinID + "]";
+			String valueString = "()";
+			if (value != null) valueString = "(" + value + ")";
+			return moleculeName + valueString;// + joinIdString;
 		}
 	}
 	
@@ -279,7 +288,7 @@ public class AJoin {
 					}
 					
 				}
-			});
+			}, executorForReactions);
 		}
 
 		protected void to(M_S m) {
@@ -342,7 +351,7 @@ public class AJoin {
 		fullM.semaphore = null;
 		return fullM.resultValue;
 	}
-	private static void runOnUIThread(boolean uiThread, final Runnable runnable) {
+	private static void runOnUIThread(boolean uiThread, final Runnable runnable, ThreadPoolExecutor executor) {
 		if (uiThread) {
 			if (Looper.myLooper() == Looper.getMainLooper()) {
 				runnable.run();
@@ -350,18 +359,19 @@ public class AJoin {
 				uiHandler.post(runnable);
 			}
 		} else {
-			runInBackground(runnable);
+			runInBackground(runnable, executor);
 		}
 	}
-	private static void runInBackground(final Runnable runnable) {
-		if (runnable != null){
-			new AsyncTask<Void, Void, Void>() {
-				@Override
-				protected Void doInBackground(Void... params) {
-					runnable.run();
-					return null;
-				}
-			}.execute();
+	private static void runInBackground(final Runnable runnable, ThreadPoolExecutor executor) {
+		if (runnable != null) {
+			executor.execute(runnable);
+//			new AsyncTask<Void, Void, Void>() {
+//				@Override
+//				protected Void doInBackground(Void... params) {
+//					runnable.run();
+//					return null;
+//				}
+//			}.execute();
 		}
 	}
 	private void injectAndStartReactions(final M_A fullM) {
@@ -372,7 +382,7 @@ public class AJoin {
 //				Log.d("AJoin", "initial request to inject molecule " + fullM.getName());
 				internalInjectAndStartReactions(fullM);
 			}
-		});
+		}, executorForJoins);
 		
 	}
 	private void internalInjectAndStartReactions(M_A fullM) {
@@ -412,8 +422,16 @@ public class AJoin {
 	}
 
 	public String toString() {
-		return String.format("{AJoin %d, soup=%s}", joinID, availableMolecules.toString());
-		
+		String molecules = "";
+		for (String n : availableMolecules.keySet()) {
+			for (M_A m : availableMolecules.get(n)) {
+				if (molecules.length() > 0) {
+					molecules += ", ";
+				}
+				molecules += m.toString();
+			}
+		}
+		return String.format(Locale.US, "{AJoin %d, soup=%s}", joinID, molecules);
 	}
 	
 	private List<M_A> moleculesAvailable(M_A[] nominalInputMolecules) {
