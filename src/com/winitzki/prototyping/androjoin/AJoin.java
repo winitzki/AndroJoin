@@ -34,8 +34,10 @@ public class AJoin {
 		decideOnUIThread = uiThread;
 	}
 	public static void randomWait(long minMillis, long maxMillis) {
-		long time = minMillis + (new Random().nextLong())%maxMillis;
-		Log.d("AJoin", "executing random delay of " + time + "ms");
+		long randomTime = new Random().nextInt();
+		randomTime = randomTime - (long)Math.floor( randomTime / maxMillis ) * maxMillis; 
+		long time = minMillis + randomTime;
+		Log.d("AJoin", String.format("executing random delay of %d ms", (int)time) );
 
 		try {
 			Thread.sleep(time);
