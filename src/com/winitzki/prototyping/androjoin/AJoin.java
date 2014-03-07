@@ -32,9 +32,10 @@ public class AJoin {
 	private boolean decideOnUIThread;
 	
 	// multithreading: all joins will be decided on one thread; all reactions will be executed on two threads
-	private static Handler uiHandler = new Handler(Looper.getMainLooper());
-	private static ThreadPoolExecutor executorForJoins = new ThreadPoolExecutor(1, 1, 1, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-	private static ThreadPoolExecutor executorForReactions = new ThreadPoolExecutor(2, 2, 1, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
+	private static final Handler uiHandler = new Handler(Looper.getMainLooper());
+	private static final int numberOfCores = Runtime.getRuntime().availableProcessors();
+	private static final ThreadPoolExecutor executorForJoins = new ThreadPoolExecutor(1, 1, 1, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
+	private static final ThreadPoolExecutor executorForReactions = new ThreadPoolExecutor(2, Math.max(2, numberOfCores), 1, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 	
 	public AJoin(boolean uiThread) {
 		joinID = ++globalJoinCount;
@@ -333,7 +334,7 @@ public class AJoin {
 	private void inject(M_A fullM) {
 		if (!isMoleculeKnown(fullM)) {
 			Log.e("AJoin", "injecting unknown molecule " + fullM.getName() + ", now " + toString());
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException("injecting unknown molecule " + fullM.getName());
 		}
 		
 		injectAndStartReactions(fullM);		
@@ -496,6 +497,9 @@ public class AJoin {
 		availableMolecules = new HashMap<String, List<M_A>>();
 		for (Reaction r : definedReactions) {
 			for (M_A m : r.nominalInputMolecules) {
+				if (m.ownerJoin != null && m.ownerJoin != this) {
+					throw new IllegalAccessError("cannot consume molecule " + m.getName() + " defined in another join ID=" + m.ownerJoin.joinID);
+				}
 				m.ownerJoin = this;
 				knownMoleculeNames.add(m.getName());
 			}
