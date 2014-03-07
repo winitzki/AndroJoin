@@ -7,13 +7,13 @@ Join calculus is a formal model for (mostly) purely functional, concurrent compu
 
 There are a few implementations of join calculus in functional programming languages such as OCaml ("JoCaml"), F# ("joinads"), and Scala ("scalajoins"). It is perfectly possible to use join calculus with an imperative object-oriented language or with a functional language.
 
-Learning to use join calculus requires some reading. For an introduction to join calculus and several examples using JoCaml, see https://sites.google.com/site/winitzki/tutorial-on-join-calculus-and-its-implementation-in-ocaml-jocaml
+For an introduction to join calculus and many examples using JoCaml, see https://sites.google.com/site/winitzki/tutorial-on-join-calculus-and-its-implementation-in-ocaml-jocaml
 
-An implementation in Objective-C for iOS is in the github repository `CocoaJoin`. The README file in CocoaJoin also contains a detailed tutorial.
+An implementation in Objective-C for iOS is in the github repository `CocoaJoin`. The `README` file in the `CocoaJoin` repository also contains a detailed, language-neutral tutorial on concurrent programming in join calculus.
 
-This project is an adaptation of `CocoaJoin` to Java. The join calculus library consists of a single class `AJoin`. The project contains an example Android application, `DinPhil5`, that simulates five "dining philosophers" taking turns thinking and eating. The asynchronous logic of this Android application is implemented as a declarative, purely functional program in join calculus, embedded in Java.
+This `AndroJoin` project is an embedding of join calculus in Java, and is quite similar to `CocoaJoin` in spirit. The library consists of a single class `AJoin`. The project also contains an example Android application, `DinPhil5`, that simulates five "dining philosophers" taking turns thinking and eating. The asynchronous logic of this Android application is implemented as a declarative, purely functional program in join calculus.
 
-Using AndroJoin
+Using `AndroJoin`
 ===============
 
 Due to the limitations of Java (no macros, no implicit anything), the use of `AndroJoin` is quite verbose.
@@ -24,8 +24,8 @@ A join calculus program has three required parts:
 - definition of reactions (a "join definition")
 - injection of initial molecules into the chemical machine
 
-Definition of molecule names
-----------------------------
+Defining molecule names
+-----------------------
 
 Molecule names are Java objects of specially provided classes such as `M_int`, `M_empty`, `M_empty_int`, and so on. These classes all inherit from the abstract class `M_A`.
 
@@ -41,8 +41,8 @@ The optional parameter to the class constructor is a string uniquely identifying
 
 All molecule names must be declared `final`.
 
-Definition of reactions
------------------------
+Defining reactions
+------------------
 
 A join definition consists of the global function `AJoin.define` that takes a list of reactions. Each reaction consumes some input molecules and executes the reaction body.
 
@@ -50,7 +50,6 @@ For example, here is a definition of the asynchronous counter in the JoCaml synt
 
 	def counter(n) & inc() = counter(n+1)
 	 or counter(n) & getCount() = counter(n), reply n to getValue;;
-	 
 
 and in the Java syntax,
 
@@ -72,12 +71,18 @@ and in the Java syntax,
 		})
 	);
 
-Notes:
+The `consume` construct uses the actual values of `counter`, `inc`, `getValue` created earlier.
 
-- The `consume` construct uses the actual values of `counter`, `inc`, `getValue` created earlier.
+An anonymous class derived from `ReactionBody` needs to define the `run` method. This method must have the correct number of arguments of correct types; one argument per value of the input molecule. If input molecules do not have any values, the `run` method must take no arguments.
 
-- A derived anonymous class needs to define a `run` method. This method must have the correct number of arguments of correct types; one argument per value of the input molecule. If input molecules do not have any values, the `run` method must take no arguments.
+For example, consider a reaction that consumes three molecules: `counter(1)`, `enable()`, and `name("abc")`. The body of the reaction is a function of _two_ values: an integer and a string, because the `enable` molecule has an empty value. The order of these values is fixed by the order of the consumed molecules. Therefore, the reaction should be defined like this,
 
+	... reaction(consume(counter, enable, name), new ReactionBody() {
+			public void run(int n, String s) {
+			// counter(n) & enable() & name(s) => ...
+				...
+			}
+	})
 
 For convenience, a static import of `AJoin.*` can be used to import the names `define`, `defineUI`, `reaction`, `reactionUI`, `consume`, `ReactionBody`, `to`.
 
