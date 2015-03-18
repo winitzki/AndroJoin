@@ -55,7 +55,7 @@ and in the Java syntax,
 
 	final M_int counter = new M_int();
 	final M_empty inc = new M_empty();
-	final M_empty_int getValue = new M_empty_int();
+	final M_empty_int getCount = new M_empty_int();
 	
 	define(
 		reaction(consume(counter, inc), new ReactionBody() {
@@ -65,7 +65,7 @@ and in the Java syntax,
 		}), 
 		reaction(consume(counter, getCount), new ReactionBody() {
 			public void run(int n) { // the "n" is the value of "counter"
-				to(getValue.reply(n));
+				to(getCount.reply(n));
 				counter.put(n);
 			}
 		})
